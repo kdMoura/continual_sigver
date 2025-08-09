@@ -2,8 +2,8 @@ import numpy as np
 import functools
 import os
 from tqdm import tqdm
-from sigver.datasets.base import IterableDataset
-from sigver.preprocessing.normalize import preprocess_signature
+from csigver.datasets.base import IterableDataset
+from csigver.preprocessing.normalize import preprocess_signature
 from typing import Tuple, Callable, Dict, Union
 
 

@@ -1,9 +1,9 @@
 import torch
-from sigver.featurelearning.data import extract_features
-import sigver.featurelearning.models as models
+from csigver.featurelearning.data import extract_features
+import csigver.featurelearning.models as models
 import argparse
-from sigver.datasets.util import load_dataset, get_subset
-import sigver.wi.training as training
+from csigver.datasets.util import load_dataset, get_subset
+import csigver.wd.training as training
 import numpy as np
 import pickle
 
@@ -50,18 +50,18 @@ def main(args):
                                                              C=args.svm_c,
                                                              gamma=args.svm_gamma,
                                                              num_gen_train=args.gen_for_train,
-                                                             num_gen_ref=args.gen_for_ref,
+                                                             num_forg_from_exp=args.forg_from_exp,
+                                                             num_forg_from_dev=args.forg_from_dev,
                                                              num_gen_test=args.gen_for_test,
-                                                             fusion=args.fusion,
                                                              global_threshold=args.thr,
                                                              rng=rng)
         this_eer_u, this_eer = results['all_metrics']['EER_userthresholds'], results['all_metrics']['EER']
         all_results.append(results)
         eer_u_list.append(this_eer_u)
         eer_list.append(this_eer)
-
+    
     print('EER (global threshold): {:.2f} (+- {:.2f})'.format(np.mean(eer_list) * 100, np.std(eer_list) * 100))
-    print('EER (user thresholds): {:.2f} (+- {:.2f})'.format(np.mean(eer_u_list) * 100, np.std(eer_u_list) * 100))   
+    print('EER (user thresholds): {:.2f} (+- {:.2f})'.format(np.mean(eer_u_list) * 100, np.std(eer_u_list) * 100))
 
     if args.save_path is not None:
         print('Saving results to {}'.format(args.save_path))
@@ -83,18 +83,18 @@ if __name__ == '__main__':
 
     parser.add_argument('--gen-for-train', type=int, default=12)
     parser.add_argument('--gen-for-test', type=int, default=10)
-    parser.add_argument('--gen-for-ref', type=int, default=12)
+    parser.add_argument('--forg-from-exp', type=int, default=0)
+    parser.add_argument('--forg-from-dev', type=int, default=14)
 
     parser.add_argument('--svm-type', choices=['rbf', 'linear'], default='rbf')
     parser.add_argument('--svm-c', type=float, default=1)
     parser.add_argument('--svm-gamma', type=float, default=2**-11)
-    parser.add_argument('--fusion', help='Fusion type', choices=('max','min','mean','median'), default='max', type=str)
     parser.add_argument('--thr', type=float, default=0)
 
     parser.add_argument('--gpu-idx', type=int, default=0)
     parser.add_argument('--batch-size', type=int, default=32)
     parser.add_argument('--folds', type=int, default=10)
-
+    
     arguments = parser.parse_args()
     print(arguments)
 

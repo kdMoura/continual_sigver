@@ -13,9 +13,9 @@ from torch import optim
 from torch.utils.data import TensorDataset, random_split, DataLoader, RandomSampler
 from torchvision import transforms
 
-import sigver.datasets.util as util
-from sigver.featurelearning.data import TransformDataset
-import sigver.featurelearning.models as models
+import csigver.datasets.util as util
+from csigver.featurelearning.data import TransformDataset
+import csigver.featurelearning.models as models
 
 
 

@@ -1,17 +1,16 @@
 import os
 from skimage.io import imread
-from sigver.datasets.base import IterableDataset
+from csigver.datasets.base import IterableDataset
 from skimage import img_as_ubyte
 
 
-class GPDSSynthDataset(IterableDataset):
+class GPDSDataset(IterableDataset):
     """ Helper class to load the GPDS-960 Grayscale dataset
     """
 
     def __init__(self, path, extension='png'):
         self.path = path
         self.users = [int(user) for user in sorted(os.listdir(self.path))]
-        self.users = sorted(self.users)
         self.extension = extension
 
     @property
@@ -28,7 +27,7 @@ class GPDSSynthDataset(IterableDataset):
 
     @property
     def maxsize(self):
-        return 2078, 3307
+        return 952, 1360
 
     def get_user_list(self):
         return self.users

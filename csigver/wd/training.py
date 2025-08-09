@@ -6,8 +6,8 @@ import sklearn.svm
 import sklearn.pipeline as pipeline
 import sklearn.preprocessing as preprocessing
 
-import sigver.performance.metrics as metrics
-import sigver.wd.data as data
+import csigver.performance.metrics as metrics
+import csigver.wd.data as data
 
 
 def train_wdclassifier_user(training_set: Tuple[np.ndarray, np.ndarray],

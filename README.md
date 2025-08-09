@@ -16,12 +16,12 @@ The functions in this package expect continual training data to be provided in a
 * ```y```: The user that produced the signature (numpy array of size N )
 * ```yforg```: Whether the signature is a forgery (1) or genuine (0) (numpy array of size N )
 
-It is provided functions to process some commonly used datasets in the script ```sigver.datasets.process_dataset```. 
+It is provided functions to process some commonly used datasets in the script ```csigver.datasets.process_dataset```. 
 
 As an example, the following code pre-process the MCYT dataset with the procedure from [1] (remove background, center in canvas and resize to 170x242)
 
 ```bash
-python -m sigver.preprocessing.process_dataset --dataset mcyt \
+python -m csigver.preprocessing.process_dataset --dataset mcyt \
  --path MCYT-ORIGINAL/MCYToffline75original --save-path mcyt_170_242.npz
 ```
 
@@ -42,17 +42,17 @@ The inverted examples have a 150x220 size, which is the input size of the SigNet
 In order to distill knowledge from SigNet while incrementally learning another dataset through continual learning, you should inform the incremental dataset <continual-data.npz> with a defined user range [first last]. The intensity of SigNet distillation in the obtained continual representation space is defined by the --p-lamb argument as follows:
 
 ```
-python -um sigver.featurelearning.distill --s-model signet \
+python -um csigver.featurelearning.distill --s-model signet \
   --c-dataset-path <continual-data.npz> --c-users [first last] \
   --p-lamb 1.7 --logdir continual_model
 ```
 
 ## Training WD classifiers
 
-For training and testing the WD classifiers, use the ```sigver.wd.test``` script. Example:
+For training and testing the WD classifiers, use the ```csigver.wd.test``` script. Example:
 
 ```bash
-python -m sigver.wd.test --model-path <path/to/trained_model> \
+python -m csigver.wd.test --model-path <path/to/trained_model> \
     --data-path <path/to/data> --save-path <path/to/save> \
     --exp-users 0 300 --dev-users 5000 7000 --gen-for-train 12
 ```
@@ -62,14 +62,14 @@ The example above train WD classifiers for the exploitation set (users 0-300) us
 set (users 300-881), with 12 genuine signatures per user (this is the setup from [1] - refer to 
 the paper for more details). 
 
-For knowing all command-line options, run ```python -m sigver.wd.test```.
+For knowing all command-line options, run ```python -m csigver.wd.test```.
 
 ## Training WI classifiers
 
-For training and testing the WI classifiers, use the ```sigver.wi.test``` script. Example:
+For training and testing the WI classifiers, use the ```csigver.wi.test``` script. Example:
 
 ```bash
-python -m sigver.wi.test --model-path <path/to/trained_model> \
+python -m csigver.wi.test --model-path <path/to/trained_model> \
     --data-path <path/to/data> --save-path <path/to/save> \
     --exp-users 0 300 --dev-users 5000 7000 --gen-for-ref 12
 ```
@@ -79,7 +79,7 @@ The parameter ```--gen-for-ref``` defines the number of reference signatures for
 The example above train a WI classifier for the exploitation set (users 0-300) using a development
 set (users 300-881). The WI classifier is tested with 12 reference signatures per user (this is the setup from [2] - refer to the paper for more details). 
 
-For knowing all command-line options, run ```python -m sigver.wi.test```.
+For knowing all command-line options, run ```python -m csigver.wi.test```.
 
 # Evaluating the results
 
