@@ -7,6 +7,12 @@ import csigver.wd.training as training
 import numpy as np
 import pickle
 
+from csigver.featurelearning.models.modified_resnet import build_modified_resnet
+from torchvision.models.resnet import ResNet
+from csigver.featurelearning.models.modified_transformer import build_modified_transformer
+from timm.models.vision_transformer import VisionTransformer
+from csigver.featurelearning.models import available_models
+
 
 def main(args):
     sk_for_test=args.sk_for_test if args.sk_for_test != -1 else args.gen_for_test
@@ -18,12 +24,25 @@ def main(args):
         set(exp_users).intersection(set(dev_users))) == 0, 'Exploitation set and Development set must not overlap'
 
     state_dict, class_weights, forg_weights = torch.load(args.model_path,
-                                                                  map_location=lambda storage, loc: storage)
+                                                                  map_location=lambda storage, loc: storage, weights_only=False)
     device = torch.device('cuda', args.gpu_idx) if torch.cuda.is_available() else torch.device('cpu')
 
     print('Using device: {}'.format(device))
 
-    base_model = models.available_models['signet']().to(device).eval()
+    #base_model = models.available_models['signet']().to(device).eval()
+        
+    if available_models[args.model] is ResNet:
+        
+        base_model = build_modified_resnet(args.model).to(device).eval()
+        print('ResNet based model has been created.')
+    elif available_models[args.model] is VisionTransformer:
+
+        base_model = build_modified_transformer().to(device).eval()
+        print('VisionTransformer architecture based model has been created.')
+    else:
+
+        base_model = available_models[args.model]().to(device).eval()
+        print('SigNet based model has been created.')
 
     base_model.load_state_dict(state_dict)
 
@@ -94,7 +113,9 @@ def main(args):
 
 def parse_args():
     parser = argparse.ArgumentParser()
-
+    parser.add_argument('--m', choices=models.available_models, required=True,
+                        help='Model architecture', dest='model')
+    
     parser.add_argument('--model-path', required=True)
     parser.add_argument('--data-path', required=True)
     parser.add_argument('--save-path')
