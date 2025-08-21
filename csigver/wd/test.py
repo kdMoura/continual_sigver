@@ -12,7 +12,7 @@ from torchvision.models.resnet import ResNet
 from csigver.featurelearning.models.modified_transformer import build_modified_transformer
 from timm.models.vision_transformer import VisionTransformer
 from csigver.featurelearning.models import available_models
-
+import os
 
 def main(args):
     sk_for_test=args.sk_for_test if args.sk_for_test != -1 else args.gen_for_test
@@ -69,8 +69,14 @@ def main(args):
     eer_u_list = []
     eer_list = []
     all_results = []
-    for _ in range(args.folds):
+    home = os.path.expanduser("~")
+    for i in range(args.folds):
+        
+        
+        
         if args.protosig_path is None:
+            f = f"standard_sgpds_signets_tr__n{i}_g12_ir1_iu{args.exp_users[0]}-{args.exp_users[1]}.npz"
+            filename = os.path.join(home, "FilesK/exp_results/papi_wd", f)
             classifiers, results = training.train_test_all_users(exp_set,
                                                                 dev_set,
                                                                 svm_type=args.svm_type,
@@ -83,8 +89,11 @@ def main(args):
                                                                 num_sk_test=sk_for_test,
                                                                 exp_test_users=args.exp_test_users,
                                                                 global_threshold=args.thr,
-                                                                rng=rng)
+                                                                rng=rng, 
+                                                                filename=filename)
         else:
+            f = f"proto_sgpds_signets_tr__n{i}_g12_ir1_iu{args.exp_users[0]}-{args.exp_users[1]}.npz"
+            filename = os.path.join(home, "FilesK/exp_results/papi_wd", f)
             classifiers, results = training.train_test_all_users_with_protosig(exp_set,
                                                                 dev_set,
                                                                 svm_type=args.svm_type,
@@ -95,19 +104,22 @@ def main(args):
                                                                 num_gen_test=args.gen_for_test,
                                                                 num_sk_test=sk_for_test,
                                                                 global_threshold=args.thr,
-                                                                rng=rng)
-        this_eer_u, this_eer = results['all_metrics']['EER_userthresholds'], results['all_metrics']['EER']
-        all_results.append(results)
-        eer_u_list.append(this_eer_u)
-        eer_list.append(this_eer)
+                                                                rng=rng, 
+                                                                filename=filename)
+        if results is not None:
+            this_eer_u, this_eer = results['all_metrics']['EER_userthresholds'], results['all_metrics']['EER']
+            all_results.append(results)
+            eer_u_list.append(this_eer_u)
+            eer_list.append(this_eer)
     
-    print('EER (global threshold): {:.2f} (+- {:.2f})'.format(np.mean(eer_list) * 100, np.std(eer_list) * 100))
-    print('EER (user thresholds): {:.2f} (+- {:.2f})'.format(np.mean(eer_u_list) * 100, np.std(eer_u_list) * 100))
+    # print('EER (global threshold): {:.2f} (+- {:.2f})'.format(np.mean(eer_list) * 100, np.std(eer_list) * 100))
+    # print('EER (user thresholds): {:.2f} (+- {:.2f})'.format(np.mean(eer_u_list) * 100, np.std(eer_u_list) * 100))
 
-    if args.save_path is not None:
-        print('Saving results to {}'.format(args.save_path))
-        with open(args.save_path, 'wb') as f:
-            pickle.dump(all_results, f)
+    # if args.save_path is not None:
+    #     print('Saving results to {}'.format(args.save_path))
+    #     with open(args.save_path, 'wb') as f:
+    #         pickle.dump(all_results, f)
+            
     return all_results
 
 

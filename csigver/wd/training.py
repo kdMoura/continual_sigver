@@ -98,7 +98,8 @@ def train_all_users(exp_train: Tuple[np.ndarray, np.ndarray, np.ndarray],
                     gamma: float,
                     num_forg_from_dev: int,
                     num_forg_from_exp: int,
-                    rng: np.random.RandomState) -> Dict[int, sklearn.svm.SVC]:
+                    rng: np.random.RandomState, 
+                    filename = None) -> Dict[int, sklearn.svm.SVC]:
     """ Train classifiers for all users in the exploitation set
 
     Parameters
@@ -133,6 +134,8 @@ def train_all_users(exp_train: Tuple[np.ndarray, np.ndarray, np.ndarray],
     exp_y = exp_train[1]
     users = np.unique(exp_y)
 
+    list_X = []
+    list_y = []
     if num_forg_from_dev > 0:
         other_negatives = data.get_random_forgeries_from_dev(dev_set, num_forg_from_dev, rng)
     else:
@@ -140,7 +143,20 @@ def train_all_users(exp_train: Tuple[np.ndarray, np.ndarray, np.ndarray],
 
     for user in tqdm(users, file=sys.stdout):
         training_set = data.create_training_set_for_user(user, exp_train, num_forg_from_exp, other_negatives, rng)
-        classifiers[user] = train_wdclassifier_user(training_set, svm_type, C, gamma)
+        
+        list_X.append(training_set[0])
+        list_y.append(training_set[1])
+        
+        
+        if filename is None:
+            classifiers[user] = train_wdclassifier_user(training_set, svm_type, C, gamma)
+    
+    if filename is not None: 
+        np.savez(filename, 
+                 list_X=np.array(list_X),
+                 list_y=np.array(list_y),
+                 )
+        
 
     return classifiers
 
@@ -150,7 +166,8 @@ def train_all_users_with_protosig(exp_train: Tuple[np.ndarray, np.ndarray, np.nd
                     C: float,
                     gamma: float,
                     prototypical_sig: np.ndarray,
-                    rng: np.random.RandomState) -> Dict[int, sklearn.svm.SVC]:
+                    rng: np.random.RandomState, 
+                    filename = None) -> Dict[int, sklearn.svm.SVC]:
     """ Train classifiers for all users in the exploitation set
 
     Parameters
@@ -183,7 +200,9 @@ def train_all_users_with_protosig(exp_train: Tuple[np.ndarray, np.ndarray, np.nd
 
     exp_x, exp_y, exp_yforg = exp_train
     negative_samples = prototypical_sig
-
+    
+    list_X = []
+    list_y = []
     for user in tqdm(users, file=sys.stdout):
 
         positive_samples = exp_x[(exp_y == user) & (exp_yforg == 0)]
@@ -191,11 +210,21 @@ def train_all_users_with_protosig(exp_train: Tuple[np.ndarray, np.ndarray, np.nd
         train_x = np.concatenate((positive_samples, negative_samples))
         train_y = np.concatenate((np.full(len(positive_samples), 1),
                                   np.full(len(negative_samples), -1)))
-                
+        
         training_set = (train_x, train_y)
+        
+        list_X.append(training_set[0])
+        list_y.append(training_set[1])
 
-        classifiers[user] = train_wdclassifier_user(training_set, svm_type, C, gamma)
+        if filename is None:
+            classifiers[user] = train_wdclassifier_user(training_set, svm_type, C, gamma)
 
+    if filename is not None: 
+        np.savez(filename, 
+                 list_X=np.array(list_X),
+                 list_y=np.array(list_y),
+                 )
+        
     return classifiers
 
 
@@ -204,7 +233,8 @@ def test_all_users(classifier_all_user: Dict[int, sklearn.svm.SVC],
                    num_gen_test: int,
                    num_sk_test: int,
                    global_threshold: float,
-                   rng: np.random.RandomState) -> Dict:
+                   rng: np.random.RandomState,
+                   filename = None) -> Dict:
     """ Test classifiers for all users and return the metrics
 
     Parameters
@@ -229,10 +259,13 @@ def test_all_users(classifier_all_user: Dict[int, sklearn.svm.SVC],
     genuinePreds = []
     randomPreds = []
     skilledPreds = []
+    
+    list_X = []
+    list_y = []
 
     users = np.unique(y_test)
     for user in users:
-        model = classifier_all_user[user]
+        
 
         skilled_forgeries_idx = np.flatnonzero((y_test == user) & (yforg_test == 1))
         test_genuine_idx = np.flatnonzero((y_test == user) & (yforg_test == 0))
@@ -254,24 +287,37 @@ def test_all_users(classifier_all_user: Dict[int, sklearn.svm.SVC],
         test_genuine = xfeatures_test[test_genuine_chosen_idx]
         random_forgeries = xfeatures_test[random_forgeries_chosen_idx]
 
-        genuinePredUser = model.decision_function(test_genuine)
-        skilledPredUser = model.decision_function(skilled_forgeries)
-        randomPredUser = model.decision_function(random_forgeries)
+        list_X.append([test_genuine, random_forgeries, skilled_forgeries])
+        
+        if filename is None:
+            model = classifier_all_user[user]
+            genuinePredUser = model.decision_function(test_genuine)
+            skilledPredUser = model.decision_function(skilled_forgeries)
+            randomPredUser = model.decision_function(random_forgeries)
+    
+            genuinePreds.append(genuinePredUser)
+            skilledPreds.append(skilledPredUser)
+            randomPreds.append(randomPredUser)
 
-        genuinePreds.append(genuinePredUser)
-        skilledPreds.append(skilledPredUser)
-        randomPreds.append(randomPredUser)
-
-    # Calculate al metrics (EER, FAR, FRR and AUC)
-    all_metrics = metrics.compute_metrics(genuinePreds, randomPreds, skilledPreds, global_threshold)
-
-    results = {'all_metrics': all_metrics,
-               'predictions': {'genuinePreds': genuinePreds,
-                               'randomPreds': randomPreds,
-                               'skilledPreds': skilledPreds}}
-
-    print(all_metrics['EER'], all_metrics['EER_userthresholds'])
-    return results
+    if filename is None:
+        # Calculate al metrics (EER, FAR, FRR and AUC)
+        all_metrics = metrics.compute_metrics(genuinePreds, randomPreds, skilledPreds, global_threshold)
+    
+        results = {'all_metrics': all_metrics,
+                   'predictions': {'genuinePreds': genuinePreds,
+                                   'randomPreds': randomPreds,
+                                   'skilledPreds': skilledPreds}}
+    
+        print(all_metrics['EER'], all_metrics['EER_userthresholds'])
+        return results
+    else:
+        
+        np.savez(filename.replace("tr__","ts__"), 
+                 list_X=np.array(list_X),
+                 list_y=np.array(list_y),
+                 )
+        
+    return None
 
 
 def train_test_all_users(exp_set: Tuple[np.ndarray, np.ndarray, np.ndarray],
@@ -286,7 +332,8 @@ def train_test_all_users(exp_set: Tuple[np.ndarray, np.ndarray, np.ndarray],
                          num_sk_test:int,
                          exp_test_users:tuple,
                          global_threshold: float = 0,
-                         rng: np.random.RandomState = np.random.RandomState()) \
+                         rng: np.random.RandomState = np.random.RandomState(),
+                         filename = None) \
         -> Tuple[Dict[int, sklearn.svm.SVC], Dict]:
     """ Train and test classifiers for every user in the exploitation set,
         and returns the metrics.
@@ -344,16 +391,16 @@ def train_test_all_users(exp_set: Tuple[np.ndarray, np.ndarray, np.ndarray],
 
     print('Training Writer-Dependent (WD) classifiers...')
     classifiers = train_all_users(exp_train, dev_set, svm_type, C, gamma,
-                                  num_forg_from_dev, num_forg_from_exp, rng)
+                                  num_forg_from_dev, num_forg_from_exp, rng, filename)
 
     print('Tests have been performed:')
     if exp_test_users is not None:
         exp_test_X, exp_test_y, exp_test_yforg = exp_test
         mask = np.isin(exp_test_y, range(*exp_test_users))
         subset_exp_test = (exp_test_X[mask], exp_test_y[mask], exp_test_yforg[mask] )
-        results = test_all_users(classifiers, subset_exp_test, num_gen_test, num_sk_test, global_threshold, rng)  
+        results = test_all_users(classifiers, subset_exp_test, num_gen_test, num_sk_test, global_threshold, rng, filename)  
     else:    
-        results = test_all_users(classifiers, exp_test, num_gen_test, num_sk_test, global_threshold, rng)
+        results = test_all_users(classifiers, exp_test, num_gen_test, num_sk_test, global_threshold, rng, filename)
 
     return classifiers, results
 
@@ -368,7 +415,8 @@ def train_test_all_users_with_protosig(exp_set: Tuple[np.ndarray, np.ndarray, np
                          num_gen_test: int,
                          num_sk_test:int,
                          global_threshold: float = 0,
-                         rng: np.random.RandomState = np.random.RandomState()) \
+                         rng: np.random.RandomState = np.random.RandomState(),
+                         filename = None) \
         -> Tuple[Dict[int, sklearn.svm.SVC], Dict]:
     """ Train and test classifiers for every user in the exploitation set,
         and returns the metrics.
@@ -418,9 +466,9 @@ def train_test_all_users_with_protosig(exp_set: Tuple[np.ndarray, np.ndarray, np
 
     print('Training Writer-Dependent (WD) classifiers...')
     classifiers = train_all_users_with_protosig(exp_train, dev_set, svm_type, C, gamma, 
-                                  prototypical_sig, rng)
+                                  prototypical_sig, rng, filename)
 
     print('Tests have been performed:')
-    results = test_all_users(classifiers, exp_test, num_gen_test, num_sk_test, global_threshold, rng)
+    results = test_all_users(classifiers, exp_test, num_gen_test, num_sk_test, global_threshold, rng, filename)
 
     return classifiers, results
